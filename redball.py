@@ -1,15 +1,20 @@
+import socket
 import cv2
 from ultralytics import YOLO
 
+ESP32 = socket.gethostbyname("redball.local")  # or put the ESP32-CAM's IP here
+CMD_PORT = 4210
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
 def drive(cmd, speed=None):
-    # placeholder: replace with real motor control
-    print(cmd if speed is None else f"{cmd} {speed:.2f}")
-    return cmd if speed is None else f"{cmd} {speed:.2f}"
+    msg = cmd if speed is None else f"{cmd} {speed:.2f}"
+    sock.sendto(msg.encode(), (ESP32, CMD_PORT))
+    print(msg)
+    return msg
 
 model = YOLO("yolo11n.pt")
-CUP = 44  # COCO class id for "cup"
-CAMERA = 0  # 0 is the iPhone Continuity Camera when it's connected
-cap = cv2.VideoCapture(CAMERA)
+CUP = 41  # COCO class id for "cup"
+cap = cv2.VideoCapture(f"http://{ESP32}:81/stream")
 KP, DEADBAND, MIN_CONF = 0.005, 30, 0.4
 CLOSE_FRAC = 0.13  # stop when the mug fills this fraction of the frame
 
@@ -34,7 +39,7 @@ while True:
         status += f"  ({frac:.0%} of frame)"
 
     cv2.line(frame, (w // 2, 0), (w // 2, h), (255, 255, 255), 1)
-    cv2.putText(frame, status, (30, 70), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 4)
+    cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
     cv2.imshow("redball", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
